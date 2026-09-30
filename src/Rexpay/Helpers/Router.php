@@ -65,6 +65,9 @@ class Router
         }
 
         $this->route = strtolower($route);
+        if (in_array($this->route, ['customer', 'plan', 'subscription', 'subaccount', 'bank', 'settlement', 'transfer', 'transferrecipient', 'decision', 'integration', 'invoice'])) {
+            @trigger_error("Route '{$route}' is a legacy Paystack endpoint not supported by RexPay.", E_USER_DEPRECATED);
+        }
         $this->route_class = $this->getRouteClass($rexpayObj);
 
         $mets = get_class_methods($this->route_class);

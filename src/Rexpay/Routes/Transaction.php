@@ -12,9 +12,27 @@ class Transaction implements RouteInterface
         return '';
     }
 
+    public static function makePayment()
+    {
+        return [
+            RouteInterface::METHOD_KEY => RouteInterface::POST_METHOD,
+            RouteInterface::ENDPOINT_KEY => Transaction::root() . '/payment/v1/makePayment',
+            RouteInterface::PARAMS_KEY => [
+                'reference',
+                'amount',
+                'currency',
+                'userId',
+                'callbackUrl',
+                'paymentChannel',
+                'metadata',
+                'authToken',
+                'mode'
+            ],
+        ];
+    }
+
     public static function initialize()
     {
-        var_dump(1234);
         return [
             RouteInterface::METHOD_KEY => RouteInterface::POST_METHOD,
             RouteInterface::ENDPOINT_KEY => Transaction::root() . '/payment/v2/createPayment',

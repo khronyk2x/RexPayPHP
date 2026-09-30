@@ -27,10 +27,10 @@ class Response
     {
         $resp = \json_decode($this->body);
 
-        if ($resp === null && (!property_exists($resp, 'responseCode') || !property_exists($resp, 'status'))) {
+        if ($resp === null || !is_object($resp)) {
             throw new ApiException(
                 "Rexpay Request failed with response: '" .
-                $this->messageFromApiJson($resp)."'",
+                $this->messageFromApiJson(null) . "'",
                 $resp,
                 $this->requestObject
             );

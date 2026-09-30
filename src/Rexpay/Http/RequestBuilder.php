@@ -23,6 +23,19 @@ class RequestBuilder
         $this->interface = $interface;
         $this->payload = $payload;
         $this->sentargs = $sentargs;
+        $this->autoInjectCredentials();
+    }
+
+    private function autoInjectCredentials()
+    {
+        if (is_object($this->rexpayObj)) {
+            if (!empty($this->rexpayObj->auth_token) && empty($this->payload['authToken'])) {
+                $this->payload['authToken'] = $this->rexpayObj->auth_token;
+            }
+            if (!empty($this->rexpayObj->mode) && empty($this->payload['mode'])) {
+                $this->payload['mode'] = $this->rexpayObj->mode;
+            }
+        }
     }
 
     public function build()
@@ -35,6 +48,7 @@ class RequestBuilder
         $this->moveArgsToSentargs();
         $this->putArgsIntoEndpoint($this->request->endpoint);
         $this->packagePayload();
+        $this->request->prepare();
         return $this->request;
     }
 

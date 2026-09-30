@@ -30,13 +30,47 @@ class Request
         return $this->response;
     }
 
+    public function prepare()
+    {
+        $this->prepareAuthHeader();
+        $this->resolveEndpoint();
+    }
+
+    public function prepareAuthHeader()
+    {
+        if (!empty($this->body)) {
+            $decoded = json_decode($this->body);
+            if (is_object($decoded) && !empty($decoded->authToken)) {
+                $this->headers['Authorization'] = 'Basic ' . $decoded->authToken;
+            }
+        }
+    }
+
+    public function resolveEndpoint()
+    {
+        if (!empty($this->body)) {
+            $decoded = json_decode($this->body);
+            if (is_object($decoded) && isset($decoded->mode) && $decoded->mode !== 'test') {
+                if (isset($decoded->transactionReference)) {
+                    $this->endpoint = str_replace(
+                        'https://pgs-sandbox.globalaccelerex.com/api/cps/v1',
+                        'https://cps.globalaccelerex.com',
+                        $this->endpoint
+                    );
+                } else {
+                    $this->endpoint = str_replace(
+                        'https://pgs-sandbox.globalaccelerex.com/api/pgs',
+                        'https://pgs.globalaccelerex.com',
+                        $this->endpoint
+                    );
+                }
+            }
+        }
+    }
+
     public function flattenedHeaders()
     {
-        $basicAuthToken = json_decode($this->body);
-
-        if(isset($basicAuthToken)) {
-            $this->headers['Authorization'] = 'Basic ' . $basicAuthToken->authToken;
-        }
+        $this->prepareAuthHeader();
 
         $_ = [];
         foreach ($this->headers as $key => $value) {
@@ -47,6 +81,8 @@ class Request
 
     public function send()
     {
+        $this->prepare();
+
         $this->attemptGuzzle();
         if (!$this->response->okay) {
             $this->attemptCurl();
@@ -116,7 +152,7 @@ class Request
         );
         $this->response->body = file_get_contents($this->endpoint, false, $context);
         if ($this->response->body === false) {
-            $this->response->messages[] = 'file_get_contents failed with response: \'' . error_get_last() . '\'.';
+            $this->response->messages[] = "file_get_contents failed with response: '" . error_get_last()['message'] . "'.";
         } else {
             $this->response->okay = true;
         }
@@ -126,19 +162,6 @@ class Request
     {
         $endpoint = $this->endpoint;
 
-        if (isset(json_decode($this->body)->mode)) {
-            if (json_decode($this->body)->mode == 'test') {
-                $endpoint = $this->endpoint;
-            } else {
-
-                if (isset(json_decode($this->body)->transactionReference)) {
-                    $endpoint = str_replace('https://pgs-sandbox.globalaccelerex.com/api/cps/v1', 'https://cps.globalaccelerex.com', $this->endpoint);
-                } else {
-                    $endpoint = str_replace('https://pgs-sandbox.globalaccelerex.com/api/pgs', 'https://pgs.globalaccelerex.com', $this->endpoint);
-                }
-            }
-        }
-        //open connection attempt
         $ch = \curl_init();
         \curl_setopt($ch, \CURLOPT_URL, $endpoint);
         ($this->method === RouteInterface::POST_METHOD) && \curl_setopt($ch, \CURLOPT_POST, true);
@@ -155,7 +178,7 @@ class Request
 
         if (\curl_errno($ch)) {
             $cerr = \curl_error($ch);
-            $this->response->messages[] = 'Curl failed with response: \'' . $cerr . '\'.';
+            $this->response->messages[] = "Curl failed with response: '" . $cerr . "'.";
         } else {
             $this->response->okay = true;
         }
@@ -163,4 +186,3 @@ class Request
         \curl_close($ch);
     }
 }
-

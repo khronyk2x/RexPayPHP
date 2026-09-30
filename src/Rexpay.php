@@ -8,14 +8,78 @@ use \Pils36\Rexpay\Contracts\RouteInterface;
 class Rexpay
 {
     public $secret_key;
+    public $username;
+    public $auth_token;
+    public $mode = 'test';
     public $use_guzzle = false;
     public $custom_routes = [];
     public static $fallback_to_file_get_contents = true;
-    const VERSION="2.1.19";
+    const VERSION = "2.3.0";
 
-    public function __construct()
+    /**
+     * Rexpay Client Constructor.
+     * Can be initialized empty (classic) or with credentials for automatic auth injection.
+     *
+     * @param string|null $username RexPay Username or Basic Auth Token
+     * @param string|null $secret_key RexPay Secret Key (Password)
+     * @param string $mode 'test' or 'production'
+     */
+    public function __construct($username = null, $secret_key = null, $mode = 'test')
     {
+        if ($username !== null && $secret_key !== null) {
+            $this->username = $username;
+            $this->secret_key = $secret_key;
+            $this->auth_token = base64_encode("{$username}:{$secret_key}");
+        } elseif ($username !== null && $secret_key === null) {
+            $this->auth_token = $username;
+        }
+        $this->mode = $mode ?? 'test';
+    }
 
+    /**
+     * Shortcut to initialize a transaction.
+     *
+     * @param array $params
+     * @return mixed
+     */
+    public function initializePayment(array $params)
+    {
+        return $this->transaction->initialize($params);
+    }
+
+    /**
+     * Shortcut to verify a transaction by reference.
+     *
+     * @param string $reference
+     * @param array $additionalParams
+     * @return mixed
+     */
+    public function verifyTransaction($reference, array $additionalParams = [])
+    {
+        $params = array_merge(['transactionReference' => $reference], $additionalParams);
+        return $this->transaction->verify($params);
+    }
+
+    /**
+     * Helper to check if API response indicates success (responseCode '00').
+     *
+     * @param mixed $response
+     * @return bool
+     */
+    public static function isSuccessful($response)
+    {
+        return is_object($response) && isset($response->responseCode) && $response->responseCode === '00';
+    }
+
+    /**
+     * Helper to check if API response indicates a pending transaction (responseCode '02').
+     *
+     * @param mixed $response
+     * @return bool
+     */
+    public static function isPending($response)
+    {
+        return is_object($response) && isset($response->responseCode) && $response->responseCode === '02';
     }
 
     public function useGuzzle()
@@ -102,12 +166,8 @@ class Rexpay
         return new Router($name, $this);
     }
 
-    public function transactionVerificationStatusUrl(){
-
-
-        $uri = 'https://pgs-sandbox.globalaccelerex.com/api/cps/v1/getTransactionStatus';
-
-        return $uri;
+    public function transactionVerificationStatusUrl()
+    {
+        return 'https://pgs-sandbox.globalaccelerex.com/api/cps/v1/getTransactionStatus';
     }
 }
-
